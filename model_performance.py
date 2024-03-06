@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.dates import HourLocator, DateFormatter
-from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, mean_absolute_error
+from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, mean_absolute_error,accuracy_score
 import numpy as np
 import plotly.graph_objects as go 
 import streamlit as st
@@ -12,27 +12,47 @@ def calculate_metrics_model(df):
 
     # Classification Metrics
     confusion = confusion_matrix(df['Actual Congestion Class'], df['Predicted Congestion Class'])
+    accuracy = accuracy_score(df['Actual Congestion Class'], df['Predicted Congestion Class'])
     precision = precision_score(df['Actual Congestion Class'], df['Predicted Congestion Class'], zero_division=1)
     recall = recall_score(df['Actual Congestion Class'], df['Predicted Congestion Class'], zero_division=1)
     f1 = f1_score(df['Actual Congestion Class'], df['Predicted Congestion Class'], zero_division=1)
-
-    # Filtering for Random Forest Metrics (MAE and MAPE)
+    
+    
     df_date_non_zero = df[df['Actual Y'] != 0]
+    df_date_zero = df[df['Actual Y'] == 0]
 
     if not df_date_non_zero.empty:
-        mae = mean_absolute_error(df_date_non_zero['Actual Y'], df_date_non_zero['Predicted Y'])
-        mape = np.mean(np.abs((df_date_non_zero['Actual Y'] - df_date_non_zero['Predicted Y']) / df_date_non_zero['Actual Y'])) * 100
+        mae_non_zero = mean_absolute_error(df_date_non_zero['Actual Y'], df_date_non_zero['Predicted Y'])
+        mape_non_zero = np.mean(np.abs((df_date_non_zero['Actual Y'] - df_date_non_zero['Predicted Y']) / df_date_non_zero['Actual Y'])) * 100
+        count_non_zero = len(df_date_non_zero)
     else:
-        mae = 0
-        mape = 0
+        mae_non_zero = 0
+        mape_non_zero = 0
+        count_non_zero = 0
+
+    if not df_date_zero.empty:
+        mae_zero = 0
+        mape_zero = 0
+        count_zero = len(df_date_zero)
+    else:
+        mae_zero = 0
+        mape_zero = 0
+        count_zero = 0
+
+    # Calculate weighted average MAPE
+    total_count = len(df)
+    avg_mape = ((mape_non_zero * count_non_zero) + (mape_zero * count_zero)) / total_count
+
 
     metrics_model = {
         'Confusion Matrix': confusion,
+        'accuracy': accuracy,
         'Precision': precision,
         'Recall': recall,
         'F1 Score': f1,
-        'MAE': mae,
-        'MAPE': mape
+        'MAE': mae_non_zero,
+        'MAPE': mape_non_zero,
+        'avg_mape': avg_mape
     }
 
     return metrics_model
@@ -45,28 +65,47 @@ def calculate_metrics(df, date_str):
 
     # Classification Metrics
     confusion = confusion_matrix(daily_data['Actual Congestion Class'], daily_data['Predicted Congestion Class'])
+    accuracy = accuracy_score(daily_data['Actual Congestion Class'], daily_data['Predicted Congestion Class'])
     precision = precision_score(daily_data['Actual Congestion Class'], daily_data['Predicted Congestion Class'], zero_division=1)
     recall = recall_score(daily_data['Actual Congestion Class'], daily_data['Predicted Congestion Class'], zero_division=1)
     f1 = f1_score(daily_data['Actual Congestion Class'], daily_data['Predicted Congestion Class'], zero_division=1)
 
-    # Filtering for Random Forest Metrics (MAE and MAPE)
+        
     df_date_non_zero = daily_data[daily_data['Actual Y'] != 0]
+    df_date_zero = daily_data[daily_data['Actual Y'] == 0]
 
     if not df_date_non_zero.empty:
-        mae = mean_absolute_error(df_date_non_zero['Actual Y'], df_date_non_zero['Predicted Y'])
-        mape = np.mean(np.abs((df_date_non_zero['Actual Y'] - df_date_non_zero['Predicted Y']) / df_date_non_zero['Actual Y'])) * 100
+        mae_non_zero = mean_absolute_error(df_date_non_zero['Actual Y'], df_date_non_zero['Predicted Y'])
+        mape_non_zero = np.mean(np.abs((df_date_non_zero['Actual Y'] - df_date_non_zero['Predicted Y']) / df_date_non_zero['Actual Y'])) * 100
+        count_non_zero = len(df_date_non_zero)
     else:
-        mae = 0
-        mape = 0
+        mae_non_zero = 0
+        mape_non_zero = 0
+        count_non_zero = 0
+
+    if not df_date_zero.empty:
+        mae_zero = 0
+        mape_zero = 0
+        count_zero = len(df_date_zero)
+    else:
+        mae_zero = 0
+        mape_zero = 0
+        count_zero = 0
+
+    # Calculate weighted average MAPE
+    total_count = len(df)
+    avg_mape = ((mape_non_zero * count_non_zero) + (mape_zero * count_zero)) / total_count
 
     metrics = {
         'Date': date_str,
         'Confusion Matrix': confusion,
+        'accuracy': accuracy,
         'Precision': precision,
         'Recall': recall,
         'F1 Score': f1,
-        'MAE': mae,
-        'MAPE': mape
+        'MAE': mae_non_zero,
+        'MAPE': mape_non_zero,
+        'avg_mape': avg_mape
     }
 
     return metrics
@@ -290,11 +329,13 @@ st.title("Model Performance")
 # แสดงผลลัพธ์บน Streamlit
 st.write("Confusion Matrix:")
 st.write(metrics_result_model['Confusion Matrix'])
+st.write("accuracy:", metrics_result_model['accuracy'])
 st.write("Precision:", metrics_result_model['Precision'])
 st.write("Recall:", metrics_result_model['Recall'])
 st.write("F1 Score:", metrics_result_model['F1 Score'])
 st.write("MAE:", metrics_result_model['MAE'])
 st.write("MAPE:", metrics_result_model['MAPE'])
+st.write("avg_mape:", metrics_result_model['avg_mape'])
 
 
 
@@ -337,13 +378,15 @@ st.markdown("## Metrics for Date:")
 st.write("Metrics for Date:", date_str)
 st.write("Confusion Matrix:")
 st.write(metrics_result['Confusion Matrix'])
+st.write("accuracy:", metrics_result['accuracy'])
 st.write("Precision:", metrics_result['Precision'])
 st.write("Recall:", metrics_result['Recall'])
 st.write("F1 Score:", metrics_result['F1 Score'])
 st.write("MAE:", metrics_result['MAE'])
 st.write("MAPE:", metrics_result['MAPE'])
+st.write("avg_mape:", metrics_result['avg_mape'])
     
-# --------------------------------------------------------------------   
+# --------------------------------------------------------------------------------------------------------------------------------------------   
 # อ่านข้อมูลจาก DataFrames
 df = pd.read_csv('randomforest_config.csv')  # เปลี่ยน 'data.csv' เป็นชื่อไฟล์ข้อมูลของคุณ
 df['sensor time'] = pd.to_datetime(df['sensor time'])
@@ -363,11 +406,13 @@ st.title("Model Test Config")
 # แสดงผลลัพธ์บน Streamlit
 st.write("Confusion Matrix:")
 st.write(metrics_result_model['Confusion Matrix'])
+st.write("accuracy:", metrics_result_model['accuracy'])
 st.write("Precision:", metrics_result_model['Precision'])
 st.write("Recall:", metrics_result_model['Recall'])
 st.write("F1 Score:", metrics_result_model['F1 Score'])
 st.write("MAE:", metrics_result_model['MAE'])
 st.write("MAPE:", metrics_result_model['MAPE'])
+st.write("avg_mape:", metrics_result_model['avg_mape'])
 
 
 
@@ -410,8 +455,12 @@ st.markdown("## Metrics for Date:")
 st.write("Metrics for Date:", date_str)
 st.write("Confusion Matrix:")
 st.write(metrics_result['Confusion Matrix'])
+st.write("accuracy:", metrics_result['accuracy'])
 st.write("Precision:", metrics_result['Precision'])
 st.write("Recall:", metrics_result['Recall'])
 st.write("F1 Score:", metrics_result['F1 Score'])
 st.write("MAE:", metrics_result['MAE'])
 st.write("MAPE:", metrics_result['MAPE'])
+st.write("avg_mape:", metrics_result['avg_mape'])
+
+
