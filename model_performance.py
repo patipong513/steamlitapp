@@ -464,3 +464,79 @@ st.write("MAPE:", metrics_result['MAPE'])
 st.write("avg_mape:", metrics_result['avg_mape'])
 
 
+# --------------------------------------------------------------------------------------------------------------------------------------------   
+# อ่านข้อมูลจาก DataFrames
+df = pd.read_csv('randomforest_ship.csv')  # เปลี่ยน 'data.csv' เป็นชื่อไฟล์ข้อมูลของคุณ
+df['sensor time'] = pd.to_datetime(df['sensor time'])
+df['sensor date'] = pd.to_datetime(df['sensor date'], format='%d/%m/%Y')
+
+start_date = pd.to_datetime('2023-05-01')
+end_date = pd.to_datetime('2023-06-30')
+# ส่วนของการเรียกใช้ function ใน Streamlit app
+if 'selected_date' not in st.session_state:
+    st.session_state.selected_date = start_date
+
+        
+
+# fig.show()
+metrics_result_model = calculate_metrics_model(df)
+st.title("Model Test ship")
+# แสดงผลลัพธ์บน Streamlit
+st.write("Confusion Matrix:")
+st.write(metrics_result_model['Confusion Matrix'])
+st.write("accuracy:", metrics_result_model['accuracy'])
+st.write("Precision:", metrics_result_model['Precision'])
+st.write("Recall:", metrics_result_model['Recall'])
+st.write("F1 Score:", metrics_result_model['F1 Score'])
+st.write("MAE:", metrics_result_model['MAE'])
+st.write("MAPE:", metrics_result_model['MAPE'])
+st.write("avg_mape:", metrics_result_model['avg_mape'])
+
+
+
+st.title("Daily")
+# แสดงปุ่มเพื่อเลื่อนไปวันถัดไป
+if st.button("Next Day", key='next_day_button_3'):
+    increment_date()
+
+# แสดงตัวเลือกวันที่
+selected_date = st.date_input("Select Date:", st.session_state.selected_date, min_value=start_date, max_value=end_date, key='unique_date_input_key1')
+# อัปเดต state วันที่หากมีการเลือกจาก date input
+st.session_state.selected_date = selected_date
+
+date_str = selected_date
+
+        
+metrics_result = calculate_metrics(df, date_str.strftime('%Y-%m-%d'))
+# พล็อตกราฟด้วย Plotly บน Streamlit
+# พล็อตกราฟโดยใช้ Plotly
+daily_data = df[df['sensor date'] == pd.to_datetime(date_str)]
+
+hours = pd.date_range(start=daily_data['sensor time'].min(), end=daily_data['sensor time'].max(), freq='H')
+
+fig = go.Figure()
+
+fig.add_trace(go.Scatter(x=daily_data['sensor time'], y=daily_data['Actual Y'], mode='lines', name='Actual', line=dict(color='green')))
+fig.add_trace(go.Scatter(x=daily_data['sensor time'], y=daily_data['Predicted Y'], mode='lines', name='Predicted', line=dict(color='pink')))
+
+fig.update_layout(title='Actual vs. Predicted Congestion',
+                xaxis_title='Time',
+                yaxis_title='Congestion',
+                xaxis=dict(tickmode='array', tickvals=hours, tickformat='%H:%M'),
+                yaxis=dict(range=[-100, 14000]),
+                legend=dict(x=0, y=1),
+                width=1000, height=500)
+st.plotly_chart(fig)
+    
+# แสดงผลลัพธ์บน Streamlit
+st.markdown("## Metrics for Date:")
+st.write("Metrics for Date:", date_str)
+st.write("Confusion Matrix:")
+st.write(metrics_result['Confusion Matrix'])
+st.write("accuracy:", metrics_result['accuracy'])
+st.write("Precision:", metrics_result['Precision'])
+st.write("Recall:", metrics_result['Recall'])
+st.write("F1 Score:", metrics_result['F1 Score'])
+st.write("MAE:", metrics_result['MAE'])
+st.write("MAPE:", metrics_result['MAPE'])
+st.write("avg_mape:", metrics_result['avg_mape'])
